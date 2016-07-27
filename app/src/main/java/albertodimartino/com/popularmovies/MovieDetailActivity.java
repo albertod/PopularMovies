@@ -2,7 +2,6 @@ package albertodimartino.com.popularmovies;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.text.method.ScrollingMovementMethod;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -36,7 +35,6 @@ public class MovieDetailActivity extends AppCompatActivity {
 
             TextView overviewTextView = (TextView) findViewById(R.id.movie_overview_title_text_view);
             overviewTextView.setText(movie.getOverview());
-            overviewTextView.setMovementMethod(new ScrollingMovementMethod());
 
         }else {
             finish();

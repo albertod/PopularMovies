@@ -7,6 +7,7 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.PersistableBundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -42,12 +43,15 @@ public class MainActivity extends AppCompatActivity {
     private final String API_KEY = BuildConfig.MOVIE_DB_API_KEY;
     private final String POPULAR_MOVIES = "popular";
     private final String TOP_RATED_MOVIES = "top_rated";
+    private final String MOVIES_SORT_SAVED_ON_BUNDLE = "bundle_movies";
     private final String KEY_API_KEY = "api_key";
     private final Gson gson = new Gson();
     private GridView mGridView;
     private MovieAdapter mMovieAdapter;
     private List<Page.Movie> mMovieList;
     private Page movies;
+    private String currentSorting = POPULAR_MOVIES; // The default is always popular movies
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,8 +63,14 @@ public class MainActivity extends AppCompatActivity {
         mMovieAdapter = new MovieAdapter(this, mMovieList);
         mGridView.setAdapter(mMovieAdapter);
 
+
+        if (savedInstanceState != null)
+            currentSorting = savedInstanceState.getString(MOVIES_SORT_SAVED_ON_BUNDLE);
+        if (currentSorting == null)
+            currentSorting = TOP_RATED_MOVIES;
+
         if (isOnline()) {
-            new DownloadMoviesTask().execute(POPULAR_MOVIES);
+            new DownloadMoviesTask().execute(currentSorting);
 
             mGridView.setOnItemClickListener((parent, v, position, id) -> {
                 Page.Movie movie = (Page.Movie) parent.getItemAtPosition(position);
@@ -78,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         if (isOnline()) {
-            new DownloadMoviesTask().execute(POPULAR_MOVIES);
+            new DownloadMoviesTask().execute(currentSorting);
 
             mGridView.setOnItemClickListener((parent, v, position, id) -> {
                 Page.Movie movie = (Page.Movie) parent.getItemAtPosition(position);
@@ -89,6 +99,12 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "Can't load movies at this time", Toast.LENGTH_LONG).show();
         }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
+        super.onSaveInstanceState(outState, outPersistentState);
+        outState.putString(MOVIES_SORT_SAVED_ON_BUNDLE, currentSorting);
     }
 
     @Override
@@ -103,10 +119,20 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
             case R.id.top_rated_order_menu_item:
-                Toast.makeText(this, "TOP RATED", Toast.LENGTH_SHORT).show();
+                if (isOnline()) {
+                    new DownloadMoviesTask().execute(TOP_RATED_MOVIES);
+                    currentSorting = TOP_RATED_MOVIES;
+                }
+                else
+                    Toast.makeText(this, "Can't load movies at this time", Toast.LENGTH_SHORT).show();
                 return true;
             case R.id.most_popular_order_menu_item:
-                Toast.makeText(this, "MOST POPULAR", Toast.LENGTH_SHORT).show();
+                if (isOnline()){
+                    new DownloadMoviesTask().execute(POPULAR_MOVIES);
+                    currentSorting = POPULAR_MOVIES;
+                }
+                else
+                    Toast.makeText(this, "Can't load movies at this time", Toast.LENGTH_SHORT).show();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
