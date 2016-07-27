@@ -1,11 +1,17 @@
 package albertodimartino.com.popularmovies;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -33,7 +39,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String DEBUG_TAG = MainActivity.class.toString();
 
     private final String BASE_URL = "https://api.themoviedb.org/3/movie";
-    private final String IMAGE_ENDPOINT = "http://image.tmdb.org/t/p/w500";
     private final String API_KEY = BuildConfig.MOVIE_DB_API_KEY;
     private final String POPULAR_MOVIES = "popular";
     private final String TOP_RATED_MOVIES = "top_rated";
@@ -53,7 +58,66 @@ public class MainActivity extends AppCompatActivity {
         mMovieList = new ArrayList<>();
         mMovieAdapter = new MovieAdapter(this, mMovieList);
         mGridView.setAdapter(mMovieAdapter);
-        new DownloadMoviesTask().execute(POPULAR_MOVIES);
+
+        if (isOnline()) {
+            new DownloadMoviesTask().execute(POPULAR_MOVIES);
+
+            mGridView.setOnItemClickListener((parent, v, position, id) -> {
+                Page.Movie movie = (Page.Movie) parent.getItemAtPosition(position);
+                Intent intent = new Intent(this, MovieDetailActivity.class);
+                intent.putExtra(MovieDetailActivity.MOVIE_EXTRA, movie);
+                startActivity(intent);
+            });
+        } else {
+            Toast.makeText(this, "Can't load movies at this time", Toast.LENGTH_LONG).show();
+        }
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (isOnline()) {
+            new DownloadMoviesTask().execute(POPULAR_MOVIES);
+
+            mGridView.setOnItemClickListener((parent, v, position, id) -> {
+                Page.Movie movie = (Page.Movie) parent.getItemAtPosition(position);
+                Intent intent = new Intent(this, MovieDetailActivity.class);
+                intent.putExtra(MovieDetailActivity.MOVIE_EXTRA, movie);
+                startActivity(intent);
+            });
+        } else {
+            Toast.makeText(this, "Can't load movies at this time", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        super.onCreateOptionsMenu(menu);
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.movie_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.top_rated_order_menu_item:
+                Toast.makeText(this, "TOP RATED", Toast.LENGTH_SHORT).show();
+                return true;
+            case R.id.most_popular_order_menu_item:
+                Toast.makeText(this, "MOST POPULAR", Toast.LENGTH_SHORT).show();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    // Using function from stackoverflow posted on Udacity guide
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        return netInfo != null && netInfo.isConnectedOrConnecting();
     }
 
     private class DownloadMoviesTask extends AsyncTask<String, Void, Void> {
@@ -139,6 +203,7 @@ public class MainActivity extends AppCompatActivity {
             }
             return buffer.toString();
         }
+
     }
 
     private class MovieAdapter extends ArrayAdapter<Page.Movie> {
@@ -167,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
                 // This is a new view, we need to inflate the layout  or in this case initialize the view
                 convertView = new ImageView(getContext());
             }
-            Picasso.with(mContext).load(IMAGE_ENDPOINT + movie.getPosterPath()).into((ImageView) convertView);
+            Picasso.with(mContext).load(Page.Movie.IMAGE_ENDPOINT + movie.getPosterPath()).into((ImageView) convertView);
             return  convertView;
         }
     }

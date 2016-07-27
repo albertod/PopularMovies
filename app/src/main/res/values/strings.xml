@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Popular Movies</string>
+    <string name="poster_image_description">Poster Image</string>
+    <string name="movie_title_label">Title:</string>
+    <string name="release_date_label">Release Date:</string>
+    <string name="average_rating_label">Average Rating:</string>
+    <string name="overview_label">Overview:</string>
 </resources>
