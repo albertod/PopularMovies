@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.PersistableBundle;
@@ -20,37 +19,29 @@ import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
 import com.squareup.picasso.Picasso;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import albertodimartino.com.popularmovies.models.Page;
+import albertodimartino.com.popularmovies.connector.MovieDbService;
+import albertodimartino.com.popularmovies.connector.ServiceGenerator;
+import albertodimartino.com.popularmovies.connector.models.Page;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String DEBUG_TAG = MainActivity.class.toString();
 
-    private final String BASE_URL = "https://api.themoviedb.org/3/movie";
-    private final String API_KEY = BuildConfig.MOVIE_DB_API_KEY;
     private final String POPULAR_MOVIES = "popular";
     private final String TOP_RATED_MOVIES = "top_rated";
     private final String MOVIES_SORT_SAVED_ON_BUNDLE = "bundle_movies";
-    private final String KEY_API_KEY = "api_key";
-    private final Gson gson = new Gson();
+    private String currentSorting = POPULAR_MOVIES; // The default is always popular movies
+
     private GridView mGridView;
     private MovieAdapter mMovieAdapter;
     private List<Page.Movie> mMovieList;
-    private Page movies;
-    private String currentSorting = POPULAR_MOVIES; // The default is always popular movies
+    private MovieDbService mMovieDbService;
 
 
     @Override
@@ -62,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
         mMovieList = new ArrayList<>();
         mMovieAdapter = new MovieAdapter(this, mMovieList);
         mGridView.setAdapter(mMovieAdapter);
+        mMovieDbService = ServiceGenerator.createService(MovieDbService.class);
 
 
         if (savedInstanceState != null)
@@ -161,34 +153,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private void fetchMovies(String type) throws IOException {
-            HttpURLConnection urlConnection = null;
-            try {
-                Uri uri = Uri.parse(BASE_URL).buildUpon()
-                        .appendPath(type.equals(POPULAR_MOVIES) ? POPULAR_MOVIES : TOP_RATED_MOVIES)
-                        .appendQueryParameter(KEY_API_KEY, API_KEY)
-                        .build();
-
-                // Create request and open connection
-                URL url = new URL(uri.toString());
-                urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setRequestMethod("GET");
-                urlConnection.connect();
-
-                String moviesJson = readIt(urlConnection.getInputStream());
-
-                if (moviesJson != null && !moviesJson.isEmpty()) {
-                    movies = gson.fromJson(moviesJson, Page.class);
-                }
-
-                mMovieList = movies.getMovies();
-
-            } catch (Exception e) {
-                Log.e(LOG_TAG, "Exception: "+ e.toString());
-                Log.e(LOG_TAG, "Exception message: " + e.toString());
-            } finally {
-                if (urlConnection != null)
-                    urlConnection.disconnect();
-            }
+            final Page movies = mMovieDbService.movies(type).execute().body();
+            mMovieList = movies.getMovies();
         }
 
         @Override
@@ -202,34 +168,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
         }
-
-        // Reads an InputStream and converts it to a String.
-        private String readIt(InputStream inputStream) throws IOException, UnsupportedEncodingException {
-
-            StringBuffer buffer = new StringBuffer();
-            BufferedReader reader;
-
-            if (inputStream == null) {
-                // Nothing to do.
-                return null;
-            }
-            reader = new BufferedReader(new InputStreamReader(inputStream));
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
-                // But it does make debugging a *lot* easier if you print out the completed
-                // buffer for debugging.
-                buffer.append(line + "\n");
-            }
-
-            if (buffer.length() == 0) {
-                // Stream was empty.  No point in parsing.
-                return null;
-            }
-            return buffer.toString();
-        }
-
     }
 
     private class MovieAdapter extends ArrayAdapter<Page.Movie> {

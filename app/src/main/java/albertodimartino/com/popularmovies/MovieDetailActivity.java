@@ -7,7 +7,7 @@ import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
 
-import albertodimartino.com.popularmovies.models.Page;
+import albertodimartino.com.popularmovies.connector.models.Page;
 
 public class MovieDetailActivity extends AppCompatActivity {
 

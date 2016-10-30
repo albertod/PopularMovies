@@ -1,4 +1,4 @@
-package albertodimartino.com.popularmovies.models;
+package albertodimartino.com.popularmovies.connector.models;
 
 
 import android.os.Parcel;
