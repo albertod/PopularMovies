@@ -2,12 +2,6 @@ package albertodimartino.com.popularmovies;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.widget.ImageView;
-import android.widget.TextView;
-
-import com.squareup.picasso.Picasso;
-
-import albertodimartino.com.popularmovies.connector.models.Page;
 
 public class MovieDetailActivity extends AppCompatActivity {
 
@@ -18,26 +12,19 @@ public class MovieDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_movie_detail);
 
-        Page.Movie movie = getIntent().getParcelableExtra(MOVIE_EXTRA);
+        if (savedInstanceState == null) {
+            // Create the detail fragment and add it to the activity
+            // using a fragment transaction.
 
-        if (movie != null) {
-            ImageView posterImageview = (ImageView) findViewById(R.id.poster_image_view);
-            Picasso.with(this).load(Page.Movie.IMAGE_ENDPOINT + movie.getPosterPath()).into(posterImageview);
+            Bundle arguments = new Bundle();
+            arguments.putParcelable(MovieDetailFragment.DETAIL_URI, getIntent().getData());
 
-            TextView movieTitle = (TextView) findViewById(R.id.movie_title_title_text_view);
-            movieTitle.setText(movie.getOriginalTitle());
+            MovieDetailFragment fragment = new MovieDetailFragment();
+            fragment.setArguments(arguments);
 
-            TextView releateDateTextView = (TextView) findViewById(R.id.movie_release_title_text_view);
-            releateDateTextView.setText(movie.getReleaseDate());
-
-            TextView averageRatingTextView = (TextView) findViewById(R.id.movie_average_rating_title_text_view);
-            averageRatingTextView.setText(movie.getVoteAverage());
-
-            TextView overviewTextView = (TextView) findViewById(R.id.movie_overview_title_text_view);
-            overviewTextView.setText(movie.getOverview());
-
-        }else {
-            finish();
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.movie_detail_container, fragment)
+                    .commit();
         }
     }
 }
