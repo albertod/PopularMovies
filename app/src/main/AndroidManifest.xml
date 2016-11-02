@@ -22,6 +22,12 @@
         </activity>
 
         <service android:enabled="true" android:name=".service.MoviesSyncService" />
+
+        <provider
+            android:authorities="@string/content_authority"
+            android:name=".data.MovieProvider"
+            android:exported="false"
+            android:syncable="true" />
     </application>
 
 </manifest>
