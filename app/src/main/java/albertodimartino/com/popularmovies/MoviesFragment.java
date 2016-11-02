@@ -1,18 +1,19 @@
 package albertodimartino.com.popularmovies;
 
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
-import android.util.Log;
+import android.support.v4.content.LocalBroadcastManager;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -26,13 +27,11 @@ import android.widget.Toast;
 
 import com.squareup.picasso.Picasso;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import albertodimartino.com.popularmovies.connector.MovieDbService;
-import albertodimartino.com.popularmovies.connector.ServiceGenerator;
 import albertodimartino.com.popularmovies.connector.models.Page;
+import albertodimartino.com.popularmovies.service.MoviesSyncService;
 
 public class MoviesFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
@@ -45,7 +44,6 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
     private GridView mGridView;
     private MovieAdapter mMovieAdapter;
     private List<Page.Movie> mMovieList;
-    private MovieDbService mMovieDbService;
 
 
     @Override
@@ -60,34 +58,53 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
         // Let the OS know it has a menu
         setHasOptionsMenu(true);
 
-        mMovieList = new ArrayList<>();
-        mMovieAdapter = new MovieAdapter(getActivity(), mMovieList);
-        mMovieDbService = ServiceGenerator.createService(MovieDbService.class);
-
         View rootView = inflater.inflate(R.layout.movies_fragment, container, false);
 
+        mMovieList = new ArrayList<>();
+        mMovieAdapter = new MovieAdapter(getActivity(), mMovieList);
         mGridView = (GridView) rootView.findViewById(R.id.gridview);
         mGridView.setAdapter(mMovieAdapter);
-
 
         if (savedInstanceState != null)
             currentSorting = savedInstanceState.getString(MOVIES_SORT_SAVED_ON_BUNDLE);
         if (currentSorting == null)
             currentSorting = TOP_RATED_MOVIES;
 
-        if (isOnline()) {
-            new DownloadMoviesTask().execute(currentSorting);
+        mGridView.setOnItemClickListener((parent, v, position, id) -> {
+            Page.Movie movie = (Page.Movie) parent.getItemAtPosition(position);
+            Intent intentDetailView = new Intent(getContext(), MovieDetailActivity.class);
+            intentDetailView.putExtra(MovieDetailActivity.MOVIE_EXTRA, movie);
+            startActivity(intentDetailView);
+        });
 
-            mGridView.setOnItemClickListener((parent, v, position, id) -> {
-                Page.Movie movie = (Page.Movie) parent.getItemAtPosition(position);
-                Intent intent = new Intent(getContext(), MovieDetailActivity.class);
-                intent.putExtra(MovieDetailActivity.MOVIE_EXTRA, movie);
-                startActivity(intent);
-            });
+        // Filter to link response from MoviesSyncService with ResultReceiver
+        IntentFilter mStatusIntentFilter = new IntentFilter(MoviesSyncService.Constants.BROADCAST_ACTION);
+        ResultReceiver mResultReceiver = new ResultReceiver();
+        LocalBroadcastManager.getInstance(getContext()).registerReceiver(mResultReceiver, mStatusIntentFilter);
+
+        if (isOnline()) {
+            Intent downloadMoviesIntent = new Intent(getActivity(), MoviesSyncService.class);
+            downloadMoviesIntent.putExtra(MoviesSyncService.TYPE, currentSorting);
+            getActivity().startService(downloadMoviesIntent);
         } else {
             Toast.makeText(getContext(), "Can't load movies at this time", Toast.LENGTH_LONG).show();
         }
         return rootView;
+    }
+
+    public class ResultReceiver extends BroadcastReceiver {
+        // Prevents instantiation
+        private ResultReceiver() {
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            List<Page.Movie> moviesFromService = intent.getParcelableArrayListExtra(MoviesSyncService.Constants.MOVIES_DATA);
+            if (moviesFromService != null) {
+                mMovieList = moviesFromService;
+                mMovieAdapter.notifyDataSetChanged();
+            }
+        }
     }
 
     @Override
@@ -101,7 +118,9 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
         switch (item.getItemId()){
             case R.id.top_rated_order_menu_item:
                 if (isOnline()) {
-                    new DownloadMoviesTask().execute(TOP_RATED_MOVIES);
+                    Intent downloadMoviesIntent = new Intent(getActivity(), MoviesSyncService.class);
+                    downloadMoviesIntent.putExtra(MoviesSyncService.TYPE, TOP_RATED_MOVIES);
+                    getActivity().startService(downloadMoviesIntent);
                     currentSorting = TOP_RATED_MOVIES;
                 }
                 else
@@ -109,7 +128,9 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
                 return true;
             case R.id.most_popular_order_menu_item:
                 if (isOnline()){
-                    new DownloadMoviesTask().execute(POPULAR_MOVIES);
+                    Intent downloadMoviesIntent = new Intent(getActivity(), MoviesSyncService.class);
+                    downloadMoviesIntent.putExtra(MoviesSyncService.TYPE, POPULAR_MOVIES);
+                    getActivity().startService(downloadMoviesIntent);
                     currentSorting = POPULAR_MOVIES;
                 }
                 else
@@ -142,37 +163,6 @@ public class MoviesFragment extends Fragment implements LoaderManager.LoaderCall
         return;
     }
 
-    private class DownloadMoviesTask extends AsyncTask<String, Void, Void> {
-
-        private final String LOG_TAG = DownloadMoviesTask.class.getSimpleName();
-
-        @Override
-        protected Void doInBackground(String... params) {
-            try {
-                fetchMovies(params[0]);
-            }catch (IOException e) {
-                Log.e(LOG_TAG, e.getMessage());
-            }
-            return null;
-        }
-
-        private void fetchMovies(String type) throws IOException {
-            final Page movies = mMovieDbService.movies(type).execute().body();
-            mMovieList = movies.getMovies();
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            if (mMovieList != null && !mMovieList.isEmpty()) {
-                // Update Movie Adapter content
-                mMovieAdapter.notifyDataSetChanged();
-            }else {
-                Toast.makeText(getContext(), "Failed to fetch movies!", Toast.LENGTH_SHORT).show();
-            }
-
-        }
-    }
 
     private class MovieAdapter extends ArrayAdapter<Page.Movie> {
         private Context mContext;
