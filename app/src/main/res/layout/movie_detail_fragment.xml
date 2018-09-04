@@ -79,6 +79,20 @@
             android:layout_toEndOf="@+id/movie_overview_label_text_view"
             android:layout_below="@id/movie_average_rating_title_text_view"/>
 
+        <android.support.v7.widget.ListViewCompat
+            android:id="@+id/trailers_listView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/youtube_button"
+            android:enabled="false"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Video Youtube"
+            android:backgroundTint="@color/colorPrimary"
+            android:layout_below="@id/movie_overview_title_text_view"/>
+
     </RelativeLayout>
 
 

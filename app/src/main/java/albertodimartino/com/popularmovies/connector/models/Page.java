@@ -26,16 +26,18 @@ public class Page {
         @SerializedName("overview") private String mOverview;
         @SerializedName("release_date") private String mReleaseDate;
         @SerializedName("vote_average") private String mVoteAverage;
+        @SerializedName("id") private Integer mId;
 
         // Constants
         public static final String IMAGE_ENDPOINT = "http://image.tmdb.org/t/p/w500";
 
-        public Movie(String originaløTitle, String posterPath, String overview, String releaseDate, String voteAverage) {
+        public Movie(String originaløTitle, String posterPath, String overview, String releaseDate, String voteAverage, Integer id) {
             mOriginalTitle = originaløTitle;
             mPosterPath = posterPath;
             mOverview = overview;
             mReleaseDate = releaseDate;
             mVoteAverage = voteAverage;
+            mId = id;
         }
 
         public String getOriginalTitle() {
@@ -78,6 +80,14 @@ public class Page {
             mVoteAverage = voteAverage;
         }
 
+        public Integer getId() {
+            return mId;
+        }
+
+        public void setId(Integer id) {
+            mId = id;
+        }
+
         // Parcelable implementations
         @Override
         public int describeContents() {
@@ -91,6 +101,7 @@ public class Page {
             dest.writeString(this.mOverview);
             dest.writeString(this.mReleaseDate);
             dest.writeString(this.mVoteAverage);
+            dest.writeInt(this.mId);
         }
 
         protected Movie(Parcel in) {
@@ -99,6 +110,7 @@ public class Page {
             this.mOverview = in.readString();
             this.mReleaseDate = in.readString();
             this.mVoteAverage = in.readString();
+            this.mId = in.readInt();
         }
 
         public static final Parcelable.Creator<Movie> CREATOR = new Parcelable.Creator<Movie>() {
